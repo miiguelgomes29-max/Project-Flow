@@ -1,40 +1,46 @@
 <?php
+ob_start();
 require_once 'db.php';
 
-if (!isset($_SESSION['user_id'])) {
+// Verificação flexível da sessão para evitar loop de redirecionamento
+$userID = $_SESSION['user_id'] ?? $_SESSION['idu'] ?? $_SESSION['IDU'] ?? null;
+$userTipo = $_SESSION['user_tipo'] ?? $_SESSION['tipo'] ?? $_SESSION['TIPO'] ?? '';
+
+if (!$userID) {
     header("Location: login.php");
     exit;
 }
 
-$userID = $_SESSION['user_id'];
-$userTipo = $_SESSION['user_tipo'];
-
-// ----------------------------------------------------
+// --------------------------------------------------
 // AÇÃO: ATUALIZAR PERFIL (NOME E FOTO)
-// ----------------------------------------------------
+// --------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_perfil'])) {
-    $novoNome = trim($_POST['novo_nome']);
+    $novoNome = trim($_POST['novo_nome'] ?? '');
 
     if (!empty($novoNome)) {
-        $stmtName = $pdo->prepare("UPDATE pap_utilizador SET NOME = ? WHERE IDU = ?");
+        // Colunas em minúsculas para compatibilidade com o PostgreSQL / Supabase
+        $stmtName = $pdo->prepare("UPDATE pap_utilizador SET nome = ? WHERE idu = ?");
         $stmtName->execute([$novoNome, $userID]);
+        
         $_SESSION['user_nome'] = $novoNome;
+        $_SESSION['nome']      = $novoNome;
 
         if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] === UPLOAD_ERR_OK) {
-            $fileTmpPath = $_FILES['foto_perfil']['tmp_name'];
-            $fileName = $_FILES['foto_perfil']['name'];
+            $fileTmpPath   = $_FILES['foto_perfil']['tmp_name'];
+            $fileName      = $_FILES['foto_perfil']['name'];
             $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
             $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
             if (in_array($fileExtension, $allowedExtensions)) {
                 $newFileName = 'user_' . $userID . '_' . time() . '.' . $fileExtension;
-                $uploadFileDir = __DIR__ . '/uploads/';
+                
+                // Na Vercel o sistema de ficheiros é apenas de leitura; usa-se a pasta /tmp/
+                $uploadFileDir = '/tmp/uploads/';
 
                 if (!is_dir($uploadFileDir)) {
-                    mkdir($uploadFileDir, 0755, true);
+                    @mkdir($uploadFileDir, 0755, true);
                 }
-
                 $dest_path = $uploadFileDir . $newFileName;
 
                 if (move_uploaded_file($fileTmpPath, $dest_path)) {
