@@ -10,26 +10,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!empty($email) && !empty($password)) {
         try {
-            // Procura o utilizador no Supabase (insensível a maiúsculas/minúsculas no e-mail)
+            // Procura o utilizador no Supabase
             $stmt = $pdo->prepare("SELECT * FROM pap_utilizador WHERE LOWER(email) = LOWER(?)");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 
-            // Lê a palavra-passe em texto limpo da BD
             $dbPassword = $user['password'] ?? $user['PASSWORD'] ?? null;
 
-            // Comparação direta em texto limpo (sem encriptação)
+            // Comparação direta em texto limpo
             if ($user && $dbPassword && $password === $dbPassword) {
-                $idUtilizador = $user['idu'] ?? $user['IDU'] ?? $user['id'] ?? null;
+                $idUtilizador   = $user['idu'] ?? $user['IDU'] ?? $user['id'] ?? null;
+                $nomeUtilizador = $user['nome'] ?? $user['NOME'] ?? '';
+                $tipoUtilizador = $user['tipo'] ?? $user['TIPO'] ?? '';
 
-                // Define todas as chaves de sessão possíveis para garantir compatibilidade
+                // Guarda em Sessão
                 $_SESSION['user_id']   = $idUtilizador;
                 $_SESSION['idu']       = $idUtilizador;
                 $_SESSION['IDU']       = $idUtilizador;
-                $_SESSION['user_nome'] = $user['nome'] ?? $user['NOME'] ?? '';
-                $_SESSION['nome']      = $user['nome'] ?? $user['NOME'] ?? '';
-                $_SESSION['user_tipo'] = $user['tipo'] ?? $user['TIPO'] ?? '';
-                $_SESSION['tipo']      = $user['tipo'] ?? $user['TIPO'] ?? '';
+                $_SESSION['user_nome'] = $nomeUtilizador;
+                $_SESSION['nome']      = $nomeUtilizador;
+                $_SESSION['user_tipo'] = $tipoUtilizador;
+                $_SESSION['tipo']      = $tipoUtilizador;
+
+                // Guarda em Cookies de navegador (para persistência Serverless na Vercel)
+                setcookie('user_id', (string)$idUtilizador, time() + 86400, "/");
+                setcookie('user_nome', (string)$nomeUtilizador, time() + 86400, "/");
+                setcookie('user_tipo', (string)$tipoUtilizador, time() + 86400, "/");
 
                 header("Location: dashboard.php");
                 exit;
@@ -51,12 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Autenticação | PAP Manager</title>
     
-    <!-- Tipografia Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Ícones Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
@@ -83,14 +86,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             overflow: hidden;
         }
 
-        /* Contentor Principal Split Screen */
         .login-container {
             display: flex;
             width: 100%;
             height: 100vh;
         }
 
-        /* Lado Esquerdo: Formulário de Login */
         .login-left {
             width: 40%;
             min-width: 420px;
@@ -218,7 +219,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-decoration: underline;
         }
 
-        /* Lado Direito: Imagem lgn.png na raiz do projeto */
         .login-right {
             flex: 1;
             background-image: url('lgn.png');
@@ -228,7 +228,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             position: relative;
         }
 
-        /* Responsividade */
         @media (max-width: 900px) {
             .login-right {
                 display: none;
@@ -244,11 +243,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <div class="login-container">
-        
-        <!-- LADO ESQUERDO: FORMULÁRIO -->
         <div class="login-left">
             <div class="login-box">
-                
                 <div class="brand">
                     <i class="ph-fill ph-kanban"></i>
                     PAP Manager
@@ -278,13 +274,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="footer-link">
                     Ainda não tem conta? <a href="registo_user.php">Registar conta</a>
                 </div>
-
             </div>
         </div>
 
-        <!-- LADO DIREITO: IMAGEM -->
         <div class="login-right"></div>
-
     </div>
 
 </body>
