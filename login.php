@@ -1,27 +1,35 @@
 <?php
+ob_start();
 require_once 'db.php';
 
 $erro = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
+    $email    = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
     if (!empty($email) && !empty($password)) {
         try {
-            // Procura o utilizador (aceita minúsculas ou maiúsculas)
+            // Procura o utilizador no Supabase (insensível a maiúsculas/minúsculas no e-mail)
             $stmt = $pdo->prepare("SELECT * FROM pap_utilizador WHERE LOWER(email) = LOWER(?)");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 
-            // Lê a palavra-passe em texto limpo do PostgreSQL
+            // Lê a palavra-passe em texto limpo da BD
             $dbPassword = $user['password'] ?? $user['PASSWORD'] ?? null;
 
-            // Comparação direta em texto limpo
+            // Comparação direta em texto limpo (sem encriptação)
             if ($user && $dbPassword && $password === $dbPassword) {
-                $_SESSION['user_id']   = $user['idu']   ?? $user['IDU']   ?? $user['id'] ?? null;
-                $_SESSION['user_nome'] = $user['nome']  ?? $user['NOME']  ?? '';
-                $_SESSION['user_tipo'] = $user['tipo']  ?? $user['TIPO']  ?? '';
+                $idUtilizador = $user['idu'] ?? $user['IDU'] ?? $user['id'] ?? null;
+
+                // Define todas as chaves de sessão possíveis para garantir compatibilidade
+                $_SESSION['user_id']   = $idUtilizador;
+                $_SESSION['idu']       = $idUtilizador;
+                $_SESSION['IDU']       = $idUtilizador;
+                $_SESSION['user_nome'] = $user['nome'] ?? $user['NOME'] ?? '';
+                $_SESSION['nome']      = $user['nome'] ?? $user['NOME'] ?? '';
+                $_SESSION['user_tipo'] = $user['tipo'] ?? $user['TIPO'] ?? '';
+                $_SESSION['tipo']      = $user['tipo'] ?? $user['TIPO'] ?? '';
 
                 header("Location: dashboard.php");
                 exit;
@@ -29,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $erro = "E-mail ou palavra-passe incorretos.";
             }
         } catch (\PDOException $e) {
-            $erro = "Erro na consulta: " . $e->getMessage();
+            $erro = "Erro de base de dados: " . $e->getMessage();
         }
     } else {
         $erro = "Preencha todos os campos.";
@@ -210,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-decoration: underline;
         }
 
-        /* Lado Direito: Imagem na raiz do repositório */
+        /* Lado Direito: Imagem lgn.png na raiz do projeto */
         .login-right {
             flex: 1;
             background-image: url('lgn.png');
