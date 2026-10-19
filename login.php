@@ -2,34 +2,37 @@
 require_once 'db.php';
 
 $erro = '';
-$sucesso = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome     = trim($_POST['nome'] ?? '');
-    $email    = trim($_POST['email'] ?? '');
+    $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
-    $tipo     = $_POST['tipo'] ?? 'ALUNO';
 
-    if (!empty($nome) && !empty($email) && !empty($password)) {
+    if (!empty($email) && !empty($password)) {
         try {
-            // Verifica se o e-mail já existe na base de dados
+            // Procura o utilizador (aceita minúsculas ou maiúsculas)
             $stmt = $pdo->prepare("SELECT * FROM pap_utilizador WHERE LOWER(email) = LOWER(?)");
             $stmt->execute([$email]);
+            $user = $stmt->fetch();
 
-            if ($stmt->fetch()) {
-                $erro = "Este e-mail já está registado.";
+            // Lê a palavra-passe em texto limpo do PostgreSQL
+            $dbPassword = $user['password'] ?? $user['PASSWORD'] ?? null;
+
+            // Comparação direta em texto limpo
+            if ($user && $dbPassword && $password === $dbPassword) {
+                $_SESSION['user_id']   = $user['idu']   ?? $user['IDU']   ?? $user['id'] ?? null;
+                $_SESSION['user_nome'] = $user['nome']  ?? $user['NOME']  ?? '';
+                $_SESSION['user_tipo'] = $user['tipo']  ?? $user['TIPO']  ?? '';
+
+                header("Location: dashboard.php");
+                exit;
             } else {
-                // Inserção em texto limpo (sem encriptação/hash)
-                $stmt = $pdo->prepare("INSERT INTO pap_utilizador (nome, email, password, tipo) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$nome, $email, $password, $tipo]);
-
-                $sucesso = "Conta criada com sucesso! Já pode fazer login.";
+                $erro = "E-mail ou palavra-passe incorretos.";
             }
         } catch (\PDOException $e) {
-            $erro = "Erro ao criar conta: " . $e->getMessage();
+            $erro = "Erro na consulta: " . $e->getMessage();
         }
     } else {
-        $erro = "Por favor, preencha todos os campos.";
+        $erro = "Preencha todos os campos.";
     }
 }
 ?>
@@ -38,11 +41,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registo | PAP Manager</title>
+    <title>Autenticação | PAP Manager</title>
+    
+    <!-- Tipografia Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Ícones Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
     <style>
         :root {
             --primary: #2563eb;
@@ -60,29 +68,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         body {
-            min-height: 100vh;
-            background-color: #f8fafc;
+            height: 100vh;
+            width: 100vw;
+            background-color: var(--bg);
             color: var(--text);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
+            overflow: hidden;
         }
 
-        .register-card {
+        /* Contentor Principal Split Screen */
+        .login-container {
+            display: flex;
             width: 100%;
-            max-width: 440px;
+            height: 100vh;
+        }
+
+        /* Lado Esquerdo: Formulário de Login */
+        .login-left {
+            width: 40%;
+            min-width: 420px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 48px;
             background: #ffffff;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-            border: 1px solid var(--border);
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.05);
+            z-index: 2;
+            overflow-y: auto;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 360px;
         }
 
         .brand {
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             font-weight: 800;
-            margin-bottom: 24px;
+            margin-bottom: 32px;
             color: var(--text);
             display: flex;
             align-items: center;
@@ -96,154 +119,164 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         h1 {
-            font-size: 1.4rem;
+            font-size: 1.5rem;
             font-weight: 700;
             text-align: center;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            color: var(--text);
         }
 
         p.subtitle {
             text-align: center;
             color: #64748b;
-            font-size: 0.875rem;
-            margin-bottom: 24px;
+            font-size: 0.9rem;
+            margin-bottom: 32px;
         }
 
         .input-group {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
         label {
             display: block;
-            font-size: 0.85rem;
+            font-size: 0.875rem;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            color: var(--text);
         }
 
-        input, select {
+        input {
             width: 100%;
-            padding: 12px 14px;
+            padding: 12px 16px;
             border: 1px solid var(--border);
             border-radius: 10px;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             outline: none;
-            background: #f8fafc;
             transition: all 0.2s ease;
+            background: #f8fafc;
         }
 
-        input:focus, select:focus {
+        input:focus {
             background: #ffffff;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
         }
 
         button {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             background: var(--primary);
             color: white;
             border: none;
             border-radius: 10px;
             font-weight: 700;
-            font-size: 0.95rem;
+            font-size: 1rem;
             cursor: pointer;
-            margin-top: 10px;
-            transition: background 0.2s;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 8px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
         }
 
         button:hover {
             background: var(--primary-hover);
+            transform: translateY(-1px);
         }
 
-        .alert-error {
+        .alert {
             background: #fef2f2;
             border: 1px solid #fecaca;
             color: #dc2626;
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-
-        .alert-success {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #166534;
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            margin-bottom: 20px;
             text-align: center;
         }
 
         .footer-link {
             text-align: center;
-            margin-top: 20px;
-            font-size: 0.875rem;
+            margin-top: 28px;
+            font-size: 0.9rem;
             color: #64748b;
         }
 
         .footer-link a {
             color: var(--primary);
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .footer-link a:hover {
             text-decoration: underline;
         }
+
+        /* Lado Direito: Imagem na raiz do repositório */
+        .login-right {
+            flex: 1;
+            background-image: url('lgn.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+
+        /* Responsividade */
+        @media (max-width: 900px) {
+            .login-right {
+                display: none;
+            }
+            .login-left {
+                width: 100%;
+                min-width: auto;
+                box-shadow: none;
+            }
+        }
     </style>
 </head>
 <body>
 
-    <div class="register-card">
-        <div class="brand">
-            <i class="ph-fill ph-kanban"></i>
-            PAP Manager
+    <div class="login-container">
+        
+        <!-- LADO ESQUERDO: FORMULÁRIO -->
+        <div class="login-left">
+            <div class="login-box">
+                
+                <div class="brand">
+                    <i class="ph-fill ph-kanban"></i>
+                    PAP Manager
+                </div>
+                
+                <h1>Iniciar Sessão</h1>
+                <p class="subtitle">Introduza as suas credenciais para aceder</p>
+
+                <?php if (!empty($erro)): ?>
+                    <div class="alert"><?= htmlspecialchars($erro) ?></div>
+                <?php endif; ?>
+
+                <form method="POST">
+                    <div class="input-group">
+                        <label>E-mail</label>
+                        <input type="email" name="email" placeholder="nome@escola.pt" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Palavra-passe</label>
+                        <input type="password" name="password" placeholder="••••••••" required>
+                    </div>
+
+                    <button type="submit">Entrar no Painel</button>
+                </form>
+
+                <div class="footer-link">
+                    Ainda não tem conta? <a href="registo_user.php">Registar conta</a>
+                </div>
+
+            </div>
         </div>
 
-        <h1>Criar Conta</h1>
-        <p class="subtitle">Preencha os dados para efetuar o registo</p>
+        <!-- LADO DIREITO: IMAGEM -->
+        <div class="login-right"></div>
 
-        <?php if (!empty($erro)): ?>
-            <div class="alert-error"><?= htmlspecialchars($erro) ?></div>
-        <?php endif; ?>
-
-        <?php if (!empty($sucesso)): ?>
-            <div class="alert-success"><?= htmlspecialchars($sucesso) ?></div>
-        <?php endif; ?>
-
-        <form method="POST">
-            <div class="input-group">
-                <label>Nome Completo</label>
-                <input type="text" name="nome" placeholder="O teu nome" value="<?= htmlspecialchars($_POST['nome'] ?? '') ?>" required>
-            </div>
-
-            <div class="input-group">
-                <label>E-mail</label>
-                <input type="email" name="email" placeholder="nome@escola.pt" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
-            </div>
-
-            <div class="input-group">
-                <label>Palavra-passe</label>
-                <input type="password" name="password" placeholder="••••••••" required>
-            </div>
-
-            <div class="input-group">
-                <label>Tipo de Utilizador</label>
-                <select name="tipo">
-                    <option value="ALUNO">Aluno</option>
-                    <option value="PROFESSOR">Professor</option>
-                </select>
-            </div>
-
-            <button type="submit">Criar Conta</button>
-        </form>
-
-        <div class="footer-link">
-            Já tem conta? <a href="login.php">Iniciar sessão</a>
-        </div>
     </div>
 
 </body>
