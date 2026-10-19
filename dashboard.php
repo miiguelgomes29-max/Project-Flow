@@ -2,15 +2,16 @@
 ob_start();
 require_once 'db.php';
 
-// Verificação flexível da sessão para evitar loop de redirecionamento
-$userID = $_SESSION['user_id'] ?? $_SESSION['idu'] ?? $_SESSION['IDU'] ?? null;
-$userTipo = $_SESSION['user_tipo'] ?? $_SESSION['tipo'] ?? $_SESSION['TIPO'] ?? '';
+// Lê o ID do utilizador através de Sessão ou Cookie (Serverless Vercel)
+$userID   = $_SESSION['user_id']   ?? $_SESSION['idu']   ?? $_SESSION['IDU']   ?? $_COOKIE['user_id']   ?? null;
+$userNome = $_SESSION['user_nome'] ?? $_SESSION['nome']  ?? $_COOKIE['user_nome'] ?? 'Utilizador';
+$userTipo = $_SESSION['user_tipo'] ?? $_SESSION['tipo']  ?? $_COOKIE['user_tipo'] ?? 'ALUNO';
 
 if (!$userID) {
     header("Location: login.php");
     exit;
 }
-
+?>
 // --------------------------------------------------
 // AÇÃO: ATUALIZAR PERFIL (NOME E FOTO)
 // --------------------------------------------------
