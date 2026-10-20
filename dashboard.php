@@ -2,7 +2,7 @@
 ob_start();
 require_once 'db.php';
 
-// 1. Obter ID e Tipo de utilizador (Sessão ou Cookie da Vercel)
+// 1. Identificação do utilizador (Sessão / Cookie na Vercel)
 $userID   = $_SESSION['user_id']   ?? $_SESSION['idu']   ?? $_SESSION['IDU']   ?? $_COOKIE['user_id']   ?? null;
 $userNome = $_SESSION['user_nome'] ?? $_SESSION['nome']  ?? $_COOKIE['user_nome'] ?? 'Utilizador';
 $userTipo = $_SESSION['user_tipo'] ?? $_SESSION['tipo']  ?? $_COOKIE['user_tipo'] ?? 'ALUNO';
@@ -12,12 +12,11 @@ if (!$userID) {
     exit;
 }
 
-// Normalizar o tipo para maiúsculas ('ALUNO' / 'PROFESSOR')
 $tipoNorm = strtoupper(trim($userTipo));
 
-// ---------------------------------------------------------------------
-// AÇÃO: ATUALIZAR PERFIL (NOME E FOTO)
-// ---------------------------------------------------------------------
+// --------------------------------------------------
+// AÇÃO: ATUALIZAR PERFIL
+// --------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_perfil'])) {
     $novoNome = trim($_POST['novo_nome'] ?? '');
 
@@ -33,7 +32,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_perfil'])) 
             $fileTmpPath   = $_FILES['foto_perfil']['tmp_name'];
             $fileName      = $_FILES['foto_perfil']['name'];
             $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
             $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
             if (in_array($fileExtension, $allowedExtensions)) {
@@ -45,7 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_perfil'])) 
                 }
 
                 $dest_path = $uploadFileDir . $newFileName;
-
                 if (move_uploaded_file($fileTmpPath, $dest_path)) {
                     $stmtFoto = $pdo->prepare("UPDATE pap_utilizador SET foto = ? WHERE idu = ?");
                     $stmtFoto->execute([$newFileName, $userID]);
@@ -57,16 +54,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_perfil'])) 
     }
 }
 
-// Obter dados do utilizador
+// Dados do utilizador
 $stmtUser = $pdo->prepare("SELECT * FROM pap_utilizador WHERE idu = ?");
 $stmtUser->execute([$userID]);
 $userData = $stmtUser->fetch() ?: [];
 $userNome = $userData['nome'] ?? $userData['NOME'] ?? $userNome;
 $userFoto = $userData['foto'] ?? $userData['FOTO'] ?? null;
 
-// ---------------------------------------------------------------------
+// --------------------------------------------------
 // AÇÕES DO ALUNO: CRIAR PROJETO
-// ---------------------------------------------------------------------
+// --------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_projeto']) && $tipoNorm === 'ALUNO') {
     $tema                   = trim($_POST['tema'] ?? '');
     $area                   = trim($_POST['area'] ?? '');
@@ -89,9 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_projeto']) && $
     }
 }
 
-// ---------------------------------------------------------------------
-// AÇÕES DO PROFESSOR: GESTÃO DE SECCÕES
-// ---------------------------------------------------------------------
+// --------------------------------------------------
+// AÇÕES DO PROFESSOR: GESTÃO DE SECÇÕES
+// --------------------------------------------------
 if ($tipoNorm === 'PROFESSOR' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['criar_seccao'])) {
         $nomeSeccao = trim($_POST['nome_seccao'] ?? '');
@@ -134,9 +131,9 @@ if ($tipoNorm === 'PROFESSOR' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ---------------------------------------------------------------------
-// CONSULTAS (GARANTE INICIALIZAÇÃO DE TODAS AS VARIÁVEIS)
-// ---------------------------------------------------------------------
+// --------------------------------------------------
+// INICIALIZAÇÃO DE VARIÁVEIS E CONSULTAS SQL
+// --------------------------------------------------
 $professores   = [];
 $projetos      = [];
 $seccoes       = [];
