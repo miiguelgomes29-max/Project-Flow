@@ -426,7 +426,7 @@ if (is_array($projetos)) {
                         </div>
                         <div class="form-group">
                             <label>E-mail (Não alterável)</label>
-                            <input type="email" value="<?= htmlspecialchars($userData['EMAIL']) ?>" disabled style="background: #f1f5f9; cursor: not-allowed; color: #64748b;">
+                            <input type="email" value="<?= htmlspecialchars($userData['email'] ?? $userData['EMAIL'] ?? '') ?>" disabled style="background: #f1f5f9; cursor: not-allowed; color: #64748b;">
                         </div>
                         <div class="form-group">
                             <label>Foto de Perfil (JPG, PNG ou WEBP)</label>
