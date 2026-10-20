@@ -661,21 +661,15 @@ if (is_array($projetos)) {
                             </tr>
                         </thead>
                         <tbody>
-<?php foreach ($projetos as $p): 
-    $pId       = $p['idp']        ?? $p['IDP']        ?? '';
-    $pTema     = $p['tema']       ?? $p['TEMA']       ?? '';
-    $pArea     = $p['area']       ?? $p['AREA']       ?? '';
-    $pProfs    = $p['namesprofs'] ?? $p['NAMESPROFS'] ?? '';
-    $pDataFim  = $p['datafim']    ?? $p['DATAFIM']    ?? '';
-?>
+<?php foreach ($projetos as $p): ?>
 <tr>
-    <td>#<?= htmlspecialchars((string)$pId) ?></td>
-    <td><?= htmlspecialchars((string)$pTema) ?></td>
-    <td><?= htmlspecialchars((string)$pArea) ?></td>
-    <td><?= !empty($pProfs) ? htmlspecialchars((string)$pProfs) : 'Sem orientador' ?></td>
-    <td><?= !empty($pDataFim) ? htmlspecialchars((string)$pDataFim) : 'Não definida' ?></td>
+    <td>#<?= htmlspecialchars((string)getField($p, 'idp')) ?></td>
+    <td><?= htmlspecialchars((string)getField($p, 'tema')) ?></td>
+    <td><?= htmlspecialchars((string)getField($p, 'area')) ?></td>
+    <td><?= htmlspecialchars((string)getField($p, 'namesprofs')) ?></td>
+    <td><?= htmlspecialchars((string)getField($p, 'datafim')) ?></td>
     <td>
-        <a href="projeto.php?id=<?= htmlspecialchars((string)$pId) ?>" class="btn-open">Aceder &rarr;</a>
+        <a href="projeto.php?id=<?= htmlspecialchars((string)getField($p, 'idp')) ?>" class="btn-open">Aceder &rarr;</a>
     </td>
 </tr>
 <?php endforeach; ?>
