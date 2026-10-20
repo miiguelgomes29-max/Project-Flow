@@ -669,33 +669,37 @@ if (is_array($projetos)) {
                             </tr>
                         </thead>
                         <tbody>
-<?php if (!empty($projetos) && is_array($projetos)): ?>
-    <?php foreach ($projetos as $p): 
+<?php
+if (!empty($projetos) && is_array($projetos)) {
+    foreach ($projetos as $p) {
         $pId       = $p['idp']        ?? $p['IDP']        ?? '';
         $pTema     = $p['tema']       ?? $p['TEMA']       ?? '';
         $pArea     = $p['area']       ?? $p['AREA']       ?? '';
         $pProfs    = $p['namesprofs'] ?? $p['NAMESPROFS'] ?? '';
         $pDataFim  = $p['datafim']    ?? $p['DATAFIM']    ?? '';
+        ?>
+        <tr>
+            <td>#<?= htmlspecialchars((string)$pId) ?></td>
+            <td><?= htmlspecialchars((string)$pTema) ?></td>
+            <td><?= htmlspecialchars((string)$pArea) ?></td>
+            <td><?= !empty($pProfs) ? htmlspecialchars((string)$pProfs) : 'Sem orientador' ?></td>
+            <td><?= !empty($pDataFim) ? htmlspecialchars((string)$pDataFim) : 'Não definida' ?></td>
+            <td>
+                <a href="projeto.php?id=<?= htmlspecialchars((string)$pId) ?>" class="btn-open">Aceder &rarr;</a>
+            </td>
+        </tr>
+        <?php
+    }
+} else {
     ?>
-    <tr>
-        <td>#<?= htmlspecialchars((string)$pId) ?></td>
-        <td><?= htmlspecialchars((string)$pTema) ?></td>
-        <td><?= htmlspecialchars((string)$pArea) ?></td>
-        <td><?= !empty($pProfs) ? htmlspecialchars((string)$pProfs) : 'Sem orientador' ?></td>
-        <td><?= !empty($pDataFim) ? htmlspecialchars((string)$pDataFim) : 'Não definida' ?></td>
-        <td>
-            <a href="projeto.php?id=<?= htmlspecialchars((string)$pId) ?>" class="btn-open">Aceder &rarr;</a>
-        </td>
-    </tr>
-    <?php endforeach; ?>
-<?php else: ?>
     <tr>
         <td colspan="6" style="text-align: center; color: #64748b; padding: 1rem;">
             Nenhum projeto encontrado.
         </td>
     </tr>
-<?php endif; ?>
-        </div>
+    <?php
+}
+?>
 
     </div>
 
