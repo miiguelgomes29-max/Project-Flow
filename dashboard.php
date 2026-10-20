@@ -484,14 +484,21 @@ if (is_array($projetos)) {
                         </div>
                         <div class="form-group full">
                             <label>Selecione o(s) Tutor(es) / Orientador(es):</label>
-                            <div class="professors-list">
-                                <?php foreach ($professores as $p): ?>
-                                    <label class="prof-item">
-                                        <input type="checkbox" name="id_professores[]" value="<?= $p['IDU'] ?>">
-                                        <?= htmlspecialchars($p['NOME']) ?>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
+                           <div class="professors-list">
+    <?php if (!empty($professores) && is_array($professores)): ?>
+        <?php foreach ($professores as $p): 
+            $pId   = $p['idu']  ?? $p['IDU']  ?? '';
+            $pNome = $p['nome'] ?? $p['NOME'] ?? '';
+        ?>
+            <label class="prof-item">
+                <input type="checkbox" name="id_professores[]" value="<?= htmlspecialchars((string)$pId) ?>">
+                <?= htmlspecialchars((string)$pNome) ?>
+            </label>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <p style="color: #64748b; font-size: 0.875rem;">Nenhum professor encontrado.</p>
+    <?php endif; ?>
+</div>
                         </div>
                     </div>
                     <button type="submit" name="criar_projeto" class="btn" style="margin-top: 12px;"><i class="ph ph-paper-plane-right"></i> Submeter Projeto</button>
