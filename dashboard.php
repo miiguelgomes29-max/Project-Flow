@@ -484,10 +484,10 @@ if (is_array($projetos)) {
                         </div>
                         <div class="form-group full">
                             <label>Selecione o(s) Tutor(es) / Orientador(es):</label>
-                           <div class="professors-list">
+        <div class="professors-list">
     <?php if (!empty($professores) && is_array($professores)): ?>
         <?php foreach ($professores as $p): 
-            $pId   = $p['idu']  ?? $p['IDU']  ?? '';
+            $pId   = $p['idu']  ?? $p['IDU']  ?? $p['id'] ?? '';
             $pNome = $p['nome'] ?? $p['NOME'] ?? '';
         ?>
             <label class="prof-item">
