@@ -424,10 +424,13 @@ if (is_array($projetos)) {
                             <label>Nome do Utilizador</label>
                             <input type="text" name="novo_nome" value="<?= htmlspecialchars($userNome) ?>" required>
                         </div>
-                        <div class="form-group">
-                            <label>E-mail (Não alterável)</label>
-                            <input type="email" value="<?= htmlspecialchars($userData['email'] ?? $userData['EMAIL'] ?? '') ?>" disabled style="background: #f1f5f9; cursor: not-allowed; color: #64748b;">
-                        </div>
+                       <div class="input-group">
+    <label>E-mail (Não alterável)</label>
+    <input type="email" 
+           value="<?= htmlspecialchars((string)($userData['email'] ?? $userData['EMAIL'] ?? '')) ?>" 
+           disabled 
+           style="background: #f1f5f9; cursor: not-allowed; color: #64748b;">
+</div>
                         <div class="form-group">
                             <label>Foto de Perfil (JPG, PNG ou WEBP)</label>
                             <input type="file" name="foto_perfil" accept=".jpg, .jpeg, .png, .webp">
