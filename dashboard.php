@@ -661,17 +661,24 @@ if (is_array($projetos)) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (count($projetos) > 0): ?>
-                                <?php foreach ($projetos as $p): ?>
-                                    <tr>
-                                        <td>#<?= $p['IDP'] ?></td>
-                                        <td><strong><?= htmlspecialchars($p['TEMA']) ?></strong></td>
-                                        <td><?= htmlspecialchars($p['AREA']) ?></td>
-                                        <td><?= htmlspecialchars($p['NomesProfs'] ?? 'Sem orientador') ?></td>
-                                        <td><?= $p['DATAFIM'] ?? 'Não definida' ?></td>
-                                        <td><a href="index.php?id=<?= $p['IDP'] ?>" class="btn-open">Aceder &rarr;</a></td>
-                                    </tr>
-                                <?php endforeach; ?>
+                            <?php foreach ($projetos as $p): 
+    $pId       = $p['idp']        ?? $p['IDP']        ?? '';
+    $pTema     = $p['tema']       ?? $p['TEMA']       ?? '';
+    $pArea     = $p['area']       ?? $p['AREA']       ?? '';
+    $pProfs    = $p['namesprofs'] ?? $p['NAMESPROFS'] ?? '';
+    $pDataFim  = $p['datafim']    ?? $p['DATAFIM']    ?? '';
+?>
+<tr>
+    <td>#<?= htmlspecialchars((string)$pId) ?></td>
+    <td><?= htmlspecialchars((string)$pTema) ?></td>
+    <td><?= htmlspecialchars((string)$pArea) ?></td>
+    <td><?= !empty($pProfs) ? htmlspecialchars((string)$pProfs) : 'Sem orientador' ?></td>
+    <td><?= !empty($pDataFim) ? htmlspecialchars((string)$pDataFim) : 'Não definida' ?></td>
+    <td>
+        <a href="projeto.php?id=<?= htmlspecialchars((string)$pId) ?>" class="btn-open">Aceder &rarr;</a>
+    </td>
+</tr>
+<?php endforeach; ?>
                             <?php else: ?>
                                 <tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 24px;">Nenhum projeto registado até ao momento.</td></tr>
                             <?php endif; ?>
