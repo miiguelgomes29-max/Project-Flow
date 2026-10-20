@@ -2,7 +2,7 @@
 ob_start();
 require_once 'db.php';
 
-// Lê o ID do utilizador através de Sessão ou Cookie (Serverless Vercel)
+// 1. Obter ID e Tipo de utilizador (Sessão ou Cookie da Vercel)
 $userID   = $_SESSION['user_id']   ?? $_SESSION['idu']   ?? $_SESSION['IDU']   ?? $_COOKIE['user_id']   ?? null;
 $userNome = $_SESSION['user_nome'] ?? $_SESSION['nome']  ?? $_COOKIE['user_nome'] ?? 'Utilizador';
 $userTipo = $_SESSION['user_tipo'] ?? $_SESSION['tipo']  ?? $_COOKIE['user_tipo'] ?? 'ALUNO';
@@ -11,20 +11,23 @@ if (!$userID) {
     header("Location: login.php");
     exit;
 }
-?>
-// --------------------------------------------------
+
+// Normalizar o tipo para maiúsculas ('ALUNO' / 'PROFESSOR')
+$tipoNorm = strtoupper(trim($userTipo));
+
+// ---------------------------------------------------------------------
 // AÇÃO: ATUALIZAR PERFIL (NOME E FOTO)
-// --------------------------------------------------
+// ---------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_perfil'])) {
     $novoNome = trim($_POST['novo_nome'] ?? '');
 
     if (!empty($novoNome)) {
-        // Colunas em minúsculas para compatibilidade com o PostgreSQL / Supabase
         $stmtName = $pdo->prepare("UPDATE pap_utilizador SET nome = ? WHERE idu = ?");
         $stmtName->execute([$novoNome, $userID]);
-        
         $_SESSION['user_nome'] = $novoNome;
         $_SESSION['nome']      = $novoNome;
+        setcookie('user_nome', (string)$novoNome, time() + 86400, "/");
+        $userNome = $novoNome;
 
         if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] === UPLOAD_ERR_OK) {
             $fileTmpPath   = $_FILES['foto_perfil']['tmp_name'];
@@ -34,73 +37,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['atualizar_perfil'])) 
             $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
             if (in_array($fileExtension, $allowedExtensions)) {
-                $newFileName = 'user_' . $userID . '_' . time() . '.' . $fileExtension;
-                
-                // Na Vercel o sistema de ficheiros é apenas de leitura; usa-se a pasta /tmp/
+                $newFileName   = 'user_' . $userID . '_' . time() . '.' . $fileExtension;
                 $uploadFileDir = '/tmp/uploads/';
 
                 if (!is_dir($uploadFileDir)) {
                     @mkdir($uploadFileDir, 0755, true);
                 }
+
                 $dest_path = $uploadFileDir . $newFileName;
 
                 if (move_uploaded_file($fileTmpPath, $dest_path)) {
-                    $stmtFoto = $pdo->prepare("UPDATE pap_utilizador SET FOTO = ? WHERE IDU = ?");
+                    $stmtFoto = $pdo->prepare("UPDATE pap_utilizador SET foto = ? WHERE idu = ?");
                     $stmtFoto->execute([$newFileName, $userID]);
                 }
             }
         }
-
         header("Location: dashboard.php");
         exit;
     }
 }
 
-$stmtUser = $pdo->prepare("SELECT * FROM pap_utilizador WHERE IDU = ?");
+// Obter dados do utilizador
+$stmtUser = $pdo->prepare("SELECT * FROM pap_utilizador WHERE idu = ?");
 $stmtUser->execute([$userID]);
-$userData = $stmtUser->fetch();
-$userNome = $userData['NOME'];
-$userFoto = $userData['FOTO'] ?? '';
+$userData = $stmtUser->fetch() ?: [];
+$userNome = $userData['nome'] ?? $userData['NOME'] ?? $userNome;
+$userFoto = $userData['foto'] ?? $userData['FOTO'] ?? null;
 
-// ----------------------------------------------------
+// ---------------------------------------------------------------------
 // AÇÕES DO ALUNO: CRIAR PROJETO
-// ----------------------------------------------------
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_projeto']) && $userTipo === 'Aluno') {
-    $tema = trim($_POST['tema']);
-    $area = trim($_POST['area']);
-    $datafim = !empty($_POST['datafim']) ? $_POST['datafim'] : null;
+// ---------------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['criar_projeto']) && $tipoNorm === 'ALUNO') {
+    $tema                   = trim($_POST['tema'] ?? '');
+    $area                   = trim($_POST['area'] ?? '');
+    $datafim                = !empty($_POST['datafim']) ? $_POST['datafim'] : null;
     $professoresSelecionados = $_POST['id_professores'] ?? [];
 
     if (!empty($tema) && !empty($area)) {
-        // Sintaxe Postgres: RETURNING IDP em vez de lastInsertId()
-        $stmt = $pdo->prepare("INSERT INTO pap_projeto (TEMA, AREA, DATAFIM, IDAluno) VALUES (?, ?, ?, ?) RETURNING IDP");
+        $stmt = $pdo->prepare("INSERT INTO pap_projeto (tema, area, datafim, idaluno) VALUES (?, ?, ?, ?) RETURNING idp");
         $stmt->execute([$tema, $area, $datafim, $userID]);
-        $idp = $stmt->fetchColumn();
+        $idp  = $stmt->fetchColumn();
 
         if (!empty($professoresSelecionados) && is_array($professoresSelecionados)) {
-            $stmtProf = $pdo->prepare("INSERT INTO pap_projeto_orientador (IDP, IDProfessor) VALUES (?, ?)");
+            $stmtProf = $pdo->prepare("INSERT INTO pap_projeto_orientador (idp, idprofessor) VALUES (?, ?)");
             foreach ($professoresSelecionados as $idProf) {
                 $stmtProf->execute([$idp, (int)$idProf]);
             }
         }
-
         header("Location: dashboard.php");
         exit;
     }
 }
 
-// ----------------------------------------------------
-// AÇÕES DO PROFESSOR: GESTÃO DAS SUAS PASTAS E ALUNOS
-// ----------------------------------------------------
-if ($userTipo === 'Professor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    
+// ---------------------------------------------------------------------
+// AÇÕES DO PROFESSOR: GESTÃO DE SECCÕES
+// ---------------------------------------------------------------------
+if ($tipoNorm === 'PROFESSOR' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['criar_seccao'])) {
-        $nomeSeccao = trim($_POST['nome_seccao']);
-        $disciplina = trim($_POST['disciplina']);
-        $turma = trim($_POST['turma']);
+        $nomeSeccao = trim($_POST['nome_seccao'] ?? '');
+        $disciplina = trim($_POST['disciplina'] ?? '');
+        $turma      = trim($_POST['turma'] ?? '');
 
         if (!empty($nomeSeccao) && !empty($disciplina) && !empty($turma)) {
-            $stmt = $pdo->prepare("INSERT INTO pap_seccao (NOME, DISCIPLINA, TURMA, IDProfessor) VALUES (?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO pap_seccao (nome, disciplina, turma, idprofessor) VALUES (?, ?, ?, ?)");
             $stmt->execute([$nomeSeccao, $disciplina, $turma, $userID]);
             header("Location: dashboard.php");
             exit;
@@ -108,16 +107,16 @@ if ($userTipo === 'Professor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($_POST['atribuir_seccao'])) {
-        $idp = (int)$_POST['idp'];
-        $ids = (int)$_POST['ids'];
+        $idp = (int)($_POST['idp'] ?? 0);
+        $ids = (int)($_POST['ids'] ?? 0);
 
         if ($idp > 0) {
-            $stmtDel = $pdo->prepare("DELETE FROM pap_seccao_projeto WHERE IDP = ? AND IDS IN (SELECT IDS FROM pap_seccao WHERE IDProfessor = ?)");
+            $stmtDel = $pdo->prepare("DELETE FROM pap_seccao_projeto WHERE idp = ? AND ids IN (SELECT ids FROM pap_seccao WHERE idprofessor = ?)");
             $stmtDel->execute([$idp, $userID]);
 
             if ($ids > 0) {
-                $stmtAdd = $pdo->prepare("INSERT INTO pap_seccao_projeto (IDS, IDP) VALUES (?, ?)");
-                $stmtAdd->execute([$ids, $idp]);
+                $stmtAdd = $pdo->prepare("INSERT INTO pap_seccao_projeto (idp, ids) VALUES (?, ?)");
+                $stmtAdd->execute([$idp, $ids]);
             }
             header("Location: dashboard.php");
             exit;
@@ -125,51 +124,69 @@ if ($userTipo === 'Professor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($_POST['eliminar_seccao'])) {
-        $ids = (int)$_POST['ids'];
-        $stmtDelSec = $pdo->prepare("DELETE FROM pap_seccao WHERE IDS = ? AND IDProfessor = ?");
-        $stmtDelSec->execute([$ids, $userID]);
-        header("Location: dashboard.php");
-        exit;
+        $ids = (int)($_POST['ids'] ?? 0);
+        if ($ids > 0) {
+            $stmtDelSec = $pdo->prepare("DELETE FROM pap_seccao WHERE ids = ? AND idprofessor = ?");
+            $stmtDelSec->execute([$ids, $userID]);
+            header("Location: dashboard.php");
+            exit;
+        }
     }
 }
 
-// ----------------------------------------------------
-// CONSULTAS COMPATÍVEIS COM POSTGRESQL (STRING_AGG)
-// ----------------------------------------------------
-$professores = $pdo->query("SELECT IDU, NOME FROM pap_utilizador WHERE TIPO = 'Professor' ORDER BY NOME ASC")->fetchAll();
+// ---------------------------------------------------------------------
+// CONSULTAS (GARANTE INICIALIZAÇÃO DE TODAS AS VARIÁVEIS)
+// ---------------------------------------------------------------------
+$professores   = [];
+$projetos      = [];
+$seccoes       = [];
+$projsSemPasta = [];
 
-if ($userTipo === 'Aluno') {
-    $sql = "SELECT P.*, STRING_AGG(U.NOME, ', ') as \"NomesProfs\" 
-            FROM pap_projeto P 
-            LEFT JOIN pap_projeto_orientador PO ON P.IDP = PO.IDP 
-            LEFT JOIN pap_utilizador U ON PO.IDProfessor = U.IDU 
-            WHERE P.IDAluno = ? 
-            GROUP BY P.IDP 
-            ORDER BY P.TEMA ASC";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$userID]);
-    $projetos = $stmt->fetchAll();
-} else {
-    $stmtSec = $pdo->prepare("SELECT * FROM pap_seccao WHERE IDProfessor = ? ORDER BY NOME ASC");
-    $stmtSec->execute([$userID]);
-    $seccoes = $stmtSec->fetchAll();
-
-    $sqlProjetos = "SELECT P.*, U1.NOME as \"NomeAluno\", STRING_AGG(DISTINCT U2.NOME, ', ') as \"NomesProfs\", SP.IDS as \"IDSeccao\"
-                    FROM pap_projeto P 
-                    JOIN pap_utilizador U1 ON P.IDAluno = U1.IDU 
-                    LEFT JOIN pap_projeto_orientador PO ON P.IDP = PO.IDP 
-                    LEFT JOIN pap_utilizador U2 ON PO.IDProfessor = U2.IDU 
-                    LEFT JOIN pap_seccao_projeto SP ON P.IDP = SP.IDP AND SP.IDS IN (SELECT IDS FROM pap_seccao WHERE IDProfessor = ?)
-                    GROUP BY P.IDP, U1.NOME, SP.IDS 
-                    ORDER BY U1.NOME ASC, P.TEMA ASC";
-    $stmtProj = $pdo->prepare($sqlProjetos);
-    $stmtProj->execute([$userID]);
-    $projetos = $stmtProj->fetchAll();
+try {
+    $stmtProfList = $pdo->query("SELECT * FROM pap_utilizador WHERE LOWER(tipo) = 'professor' ORDER BY nome ASC");
+    $professores  = $stmtProfList ? $stmtProfList->fetchAll() : [];
+} catch (\PDOException $e) {
+    $professores  = [];
 }
 
-$projsSemPasta = array_filter($projetos, function($p) {
-    return empty($p['IDSeccao']);
-});
+if ($tipoNorm === 'ALUNO') {
+    $sql = "SELECT p.*, STRING_AGG(DISTINCT u.nome, ', ') as namesprofs 
+            FROM pap_projeto p 
+            LEFT JOIN pap_projeto_orientador po ON p.idp = po.idp 
+            LEFT JOIN pap_utilizador u ON po.idprofessor = u.idu 
+            WHERE p.idaluno = ? 
+            GROUP BY p.idp, p.tema, p.area, p.datafim, p.idaluno 
+            ORDER BY p.tema ASC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$userID]);
+    $projetos = $stmt->fetchAll() ?: [];
+
+} else {
+    $stmtSec = $pdo->prepare("SELECT * FROM pap_seccao WHERE idprofessor = ? ORDER BY nome ASC");
+    $stmtSec->execute([$userID]);
+    $seccoes = $stmtSec->fetchAll() ?: [];
+
+    $sqlProjetos = "SELECT p.*, u1.nome as nomealuno, STRING_AGG(DISTINCT u2.nome, ', ') as namesprofs, sp.ids as idseccao 
+                    FROM pap_projeto p 
+                    JOIN pap_utilizador u1 ON p.idaluno = u1.idu 
+                    LEFT JOIN pap_projeto_orientador po ON p.idp = po.idp 
+                    LEFT JOIN pap_utilizador u2 ON po.idprofessor = u2.idu 
+                    LEFT JOIN pap_seccao_projeto sp ON p.idp = sp.idp AND sp.ids IN (SELECT ids FROM pap_seccao WHERE idprofessor = ?) 
+                    GROUP BY p.idp, u1.nome, sp.ids 
+                    ORDER BY u1.nome ASC, p.tema ASC";
+
+    $stmtProj = $pdo->prepare($sqlProjetos);
+    $stmtProj->execute([$userID]);
+    $projetos = $stmtProj->fetchAll() ?: [];
+}
+
+if (is_array($projetos)) {
+    $projsSemPasta = array_filter($projetos, function($p) {
+        $sec = $p['idseccao'] ?? $p['IDSeccao'] ?? $p['ids'] ?? null;
+        return empty($sec);
+    });
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-PT">
