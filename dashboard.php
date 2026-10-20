@@ -2,6 +2,14 @@
 ob_start();
 require_once 'db.php';
 
+// COLA ESTA FUNÇÃO AQUI:
+function getField($arr, $key) {
+    if (!is_array($arr)) return '';
+    $lowerKey = strtolower($key);
+    $upperKey = strtoupper($key);
+    return $arr[$lowerKey] ?? $arr[$upperKey] ?? $arr[$key] ?? '';
+}
+
 // 1. Identificação do utilizador (Sessão / Cookie na Vercel)
 $userID   = $_SESSION['user_id']   ?? $_SESSION['idu']   ?? $_SESSION['IDU']   ?? $_COOKIE['user_id']   ?? null;
 $userNome = $_SESSION['user_nome'] ?? $_SESSION['nome']  ?? $_COOKIE['user_nome'] ?? 'Utilizador';
