@@ -661,7 +661,7 @@ if (is_array($projetos)) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($projetos as $p): 
+<?php foreach ($projetos as $p): 
     $pId       = $p['idp']        ?? $p['IDP']        ?? '';
     $pTema     = $p['tema']       ?? $p['TEMA']       ?? '';
     $pArea     = $p['area']       ?? $p['AREA']       ?? '';
