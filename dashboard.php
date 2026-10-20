@@ -716,5 +716,7 @@ if (!empty($projetos) && is_array($projetos)) {
             element.classList.add('active');
         }
     </script>
+</table>
+</div>
 </body>
 </html>
